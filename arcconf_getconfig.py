@@ -40,9 +40,13 @@ class StackLine(object):
 
     @staticmethod
     def get_k_v(line):
-        _m = re.compile('^ *([^ :][^:]+[^ :]) +: +([^ :][^:]+[^ :]) *$')
-        _x = _m.match(line)
-        return _x.groups() if _x else None
+        _x = line.split(': ', 1)
+        if _x.__len__() < 2:
+            return
+        return tuple([ s.strip() for s in  _x ])
+        # _m = re.compile('^ *([^ :][^:]+[^ :]) +: +([^ :][^:]+[^ :]) *$')
+        # _x = _m.match(line)
+        # return _x.groups() if _x else None
 
     def _crop_stack(self, i, leave_first=False):
         _new_stack = []
@@ -56,28 +60,49 @@ class StackLine(object):
                 break
         self._stack = _new_stack
 
-    def _apend_branch(self, spaces, branch):
+    def _append_branch(self, spaces, branch):
         self._stack[-1]['branch'].append(branch)
         self._stack.append({
             'spaces': spaces,
             'branch': branch,
         })
 
+    def _append_leaf(self, kv):
+        self._stack[-1]['branch'].append(kv)
+
     def append(self, line):
+        if not line:
+            return
         _spaces = self.lspace_count(line)
         if self.is_multidash(line):
             self._wasdash = not self._wasdash
             self._last_spaces = _spaces
             return
+        kv = self.get_k_v(line)
         if self._wasdash:
             # начинается заголовок нового списка элементов
             self._crop_stack(_spaces)
-            self._append_branch(_spaces, [line])
+            self._append_branch(_spaces, [line.strip()])
             self._last_spaces = _spaces
             return
-        kv = self.get_k_v(line)
+        if kv is None and _spaces == 0:
+            # text like a ...
+            # Logical device number \d
+            self._crop_stack(_spaces, leave_first=(True))
+            self._append_branch(_spaces, [line.strip()])
+            self._last_spaces = _spaces
+            return
         if kv is None:
-            pass
+            if _spaces < self._last_spaces:
+                self._crop_stack(_spaces)
+                self._append_branch(_spaces, [line.strip()])
+                self._last_spaces = _spaces
+            else:
+                self._append_leaf((line.strip(), True))
+                self._last_spaces = _spaces
+        else:
+            self._append_leaf(kv)
+        return
 
 
 class ArcconfGetconfig(object):
@@ -86,7 +111,7 @@ class ArcconfGetconfig(object):
     arcconf getconfig <ID>
     '''
 
-    def __init__(self, filename=None, id=None):
+    def __init__(self, filename=None, raw=None, id=None):
         self.id = 1 if id is None else id
         if filename is None and id is None:
             if os.isatty(sys.stdin.fileno()):
