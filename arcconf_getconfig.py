@@ -1,21 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
 import os
 import sys
 import re
 
-
-__version__ = '0.1'
-
-
-try:
-    next.__doc__
-except NameError:
-    def next(iterator):
-        '''for python2.4 or earlyer'''
-        return iterator.next()
+__version__ = '0.1.aplha'
+__all__ = ['ArcconfParser', 'ArcconfGetconfig', ]
 
 
 def _list2dict(lst):
@@ -55,10 +46,7 @@ class ArcconfParser(object):
         _x = line.split(': ', 1)
         if _x.__len__() < 2:
             return
-        return tuple([ s.strip() for s in  _x ])
-        # _m = re.compile('^ *([^ :][^:]+[^ :]) +: +([^ :][^:]+[^ :]) *$')
-        # _x = _m.match(line)
-        # return _x.groups() if _x else None
+        return tuple([s.strip() for s in _x])
 
     def _crop_stack(self, i, leave_first=False):
         _new_stack = []
@@ -134,7 +122,7 @@ class ArcconfGetconfig(object):
         if filename is None and id is None:
             if os.isatty(sys.stdin.fileno()):
                 self.id = '1'
-                self.content = self._get_output()
+                self.content = self._get_output(self.id)
             else:
                 self.content = sys.stdin.read()
             pass
@@ -145,9 +133,9 @@ class ArcconfGetconfig(object):
                 self.content = open(filename, 'rt').read()
         else:
             self.id = id
-            self.content = self._get_output()
+            self.content = self._get_output(self.id)
         #
-        self.__result = self.parse_config(self.content)
+        self._result = self.parse_config(self.content)
 
     @staticmethod
     def _get_output(id):
@@ -196,26 +184,60 @@ class ArcconfGetconfig(object):
         return _x.groups() if _x else None
 
     @staticmethod
-    def parse_config(self, content):
-        _result = []
+    def parse_config(content):
+        _result = ArcconfParser()
         for line in content.splitlines():
-            _result.append()
-        pass
+            _result.append(line)
+        return _result
+
+    def out(self, jsn, dct):
+        if dct is False:
+            _result = self._result.get_result()
+        else:
+            _result = self._result.get_as_dict()
+        if jsn is False:
+            from pprint import pprint as out
+        else:
+            try:
+                from simplejson import dumps
+            except ImportError:
+                from json import dumps
+            def out(x):
+                print(dumps(x, indent=2))
+        out(_result)
 
 
-def main(*argv):
+def main(argv):
     import optparse
-    parser = optparse.OptionParser(usage='%prog: [id]|--input=FILE')
-    # parser.add_option('id')
+    parser = optparse.OptionParser(
+        usage='%prog: [id]|--input=FILE'
+        ' --dict|--raw'
+        ' --print|--json'
+    )
     parser.add_option(
-        '-i', '--input',
-        dest='filename',
-        metavar='FILE',
+        '-i', '--input', dest='filename', metavar='FILE',
         help='Read arcconf message from file',
     )
+    parser.add_option(
+        '--dict', action='store_true', dest='dict',
+        help='get result as dictionary',
+    )
+    parser.add_option(
+        '--raw', action='store_false', dest='dict',
+        help='get result raw',
+    )
+    parser.add_option(
+        '--print', action='store_false', dest='json',
+        help='print result as python internal structure',
+    )
+    parser.add_option(
+        '--json', action='store_true', dest='json',
+        help='print resula as json',
+    )
+
     (options, args) = parser.parse_args(argv)
     _result = []
-    if options.filenane is not None:
+    if options.filename is not None:
         if args:
             parser.error('Mutially expusive options <id> and <--input=FILE>')
         else:
@@ -226,8 +248,9 @@ def main(*argv):
         for i in args:
             _result.append(ArcconfGetconfig(id=i))
 
-    pass
+    for i in _result:
+        i.out(jsn=options.json, dct=options.dict)
 
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main(sys.argv[1:])
