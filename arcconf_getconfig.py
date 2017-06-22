@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 
-__version__ = '0.1'
-
-
 import os
 import sys
 import re
+
+
+__version__ = '0.1'
 
 
 try:
@@ -18,13 +18,25 @@ except NameError:
         return iterator.next()
 
 
-class StackLine(object):
+def _list2dict(lst):
+    name = lst[0] if isinstance(lst, list) else None
+    dct = {}
+    for kv in (lst[1:] if name is not None else lst):
+        if isinstance(kv, tuple):
+            dct[kv[0]] = kv[1]
+        else:
+            _n, _d = _list2dict(kv)
+            dct[_n] = _d
+    return name, dct
+
+
+class ArcconfParser(object):
     def __init__(self):
-        self.result = []
+        self.__result = []
         self._last_spaces = -1
         self._stack = [{
             'spaces': self._last_spaces,
-            'branch': self.result,
+            'branch': self.__result,
         }]
         # _stack - стек элементов, в которые добавляются новые записи
         self._wasdash = False
@@ -104,6 +116,12 @@ class StackLine(object):
             self._append_leaf(kv)
         return
 
+    def get_result(self):
+        return self.__result
+
+    def get_as_dict(self):
+        return _list2dict(['plug'] + self.__result)[1]
+
 
 class ArcconfGetconfig(object):
     u'''
@@ -129,7 +147,7 @@ class ArcconfGetconfig(object):
             self.id = id
             self.content = self._get_output()
         #
-        self.result = self.parse_config(self.content)
+        self.__result = self.parse_config(self.content)
 
     @staticmethod
     def _get_output(id):
