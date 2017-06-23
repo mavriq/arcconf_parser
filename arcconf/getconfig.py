@@ -9,9 +9,15 @@ __all__ = ['ArcconfParser', 'ArcconfGetconfig', ]
 
 
 def _list2dict(lst):
-    name = lst[0] if isinstance(lst, list) else None
+    if isinstance(lst, list):
+        name = lst[0]
+        _tree = lst[1:]
+    else:
+        name = None
+        _tree = lst
+    # name = isinstance(lst, list) and lst[0] or None
     dct = {}
-    for kv in (lst[1:] if name is not None else lst):
+    for kv in _tree:
         if isinstance(kv, tuple):
             dct[kv[0]] = kv[1]
         else:
@@ -117,7 +123,10 @@ class ArcconfGetconfig(object):
     '''
 
     def __init__(self, filename=None, raw=None, id=None):
-        self.id = 1 if id is None else id
+        if id is None:
+            self.id = 1
+        else:
+            self.id = id
         if filename is None and id is None:
             if os.isatty(sys.stdin.fileno()):
                 self.id = '1'
@@ -180,7 +189,10 @@ class ArcconfGetconfig(object):
     def get_k_v(line):
         _m = re.compile('^ *([^ :][^:]+[^ :]) +: +([^ :][^:]+[^ :]) *$')
         _x = _m.match(line)
-        return _x.groups() if _x else None
+        if _x:
+            return _x.groups()
+        else:
+            return None
 
     @staticmethod
     def parse_config(content):
