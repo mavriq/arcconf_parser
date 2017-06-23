@@ -5,7 +5,6 @@ import os
 import sys
 import re
 
-__version__ = '0.1.aplha'
 __all__ = ['ArcconfParser', 'ArcconfGetconfig', ]
 
 
