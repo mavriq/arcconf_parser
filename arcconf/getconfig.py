@@ -122,6 +122,11 @@ class ArcconfGetconfig(object):
     arcconf getconfig <ID>
     '''
 
+    CMDLINE = 'arcconf getconfig %s'
+
+    class ArcconfException(Exception):
+        pass
+
     def __init__(self, filename=None, raw=None, id=None):
         if id is None:
             self.id = 1
@@ -145,14 +150,13 @@ class ArcconfGetconfig(object):
         #
         self._result = self.parse_config(self.content)
 
-    @staticmethod
-    def _get_output(id):
+    def _get_output(self, id):
         from subprocess import Popen, PIPE
         try:
             from subprocess import DEVNULL
         except ImportError:
             DEVNULL = open('/dev/null', 'w')
-        _cmdline = 'arcconf getconfig %s' % id
+        _cmdline = self.CMDLINE % id
         _env = os.environ.copy()
         _env.update(LC_ALL='C', LANG='C', PATH=':'.join((
             os.environ.get('PATH', ':'),
@@ -168,12 +172,13 @@ class ArcconfGetconfig(object):
         )
         _x = _cmd.communicate()
         if _cmd.returncode != 0:
-            raise OSError({
-                'command': _cmdline,
-                'returncode': _cmd.returncode,
-                'stdout': _x[0],
-                'stderr': _x[1],
-            })
+            raise self.ArcconfException(
+                "Error on executing command %s" % {
+                    'command': _cmdline,
+                    'returncode': _cmd.returncode,
+                    'stdout': _x[0],
+                    'stderr': _x[1],
+                })
         else:
             return _x[0].decode()
 
@@ -210,9 +215,13 @@ class ArcconfGetconfig(object):
             from pprint import pprint as out
         else:
             try:
-                from simplejson import dumps
+                try:
+                    from simplejson import dumps
+                except ImportError:
+                    from json import dumps
             except ImportError:
-                from json import dumps
+                raise self.ArcconfException(
+                    "Can't show like a JSON. Uou can use `--print` argument.")
             def out(x):
                 print(dumps(x, indent=2))
         out(_result)
@@ -248,19 +257,22 @@ def main(argv):
 
     (options, args) = parser.parse_args(argv)
     _result = []
-    if options.filename is not None:
-        if args:
-            parser.error('Mutially expusive options <id> and <--input=FILE>')
+    try:
+        if options.filename is not None:
+            if args:
+                parser.error('Mutially expusive options <id> and <--input=FILE>')
+            else:
+                _result.append(ArcconfGetconfig(filename=options.filename))
+        elif not args:
+            _result.append(ArcconfGetconfig())
         else:
-            _result.append(ArcconfGetconfig(filename=options.filename))
-    elif not args:
-        _result.append(ArcconfGetconfig())
-    else:
-        for i in args:
-            _result.append(ArcconfGetconfig(id=i))
+            for i in args:
+                _result.append(ArcconfGetconfig(id=i))
 
-    for i in _result:
-        i.out(jsn=options.json, dct=options.dict)
+        for i in _result:
+            i.out(jsn=options.json, dct=options.dict)
+    except ArcconfGetconfig.ArcconfException:
+        parser.error(sys.exc_info()[:2][1])
 
 
 if __name__ == '__main__':
