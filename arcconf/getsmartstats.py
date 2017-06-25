@@ -56,8 +56,10 @@ class Tag(object):
         if not _child_list:
             _children = '/>'
         else:
-            _children = '>\n%(children)s\n%(offset)s</%(tag)s>' % {
-                'children': '\n'.join(_child_list),
+            _children = ('>%(linesep)s%(children)s%(linesep)s%(offset)s'
+                    '</%(tag)s>') % {
+                'linesep': os.linesep,
+                'children': os.linesep.join(_child_list),
                 'offset': ' ' * offset,
                 'tag': self.tag
             }
