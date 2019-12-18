@@ -3,7 +3,6 @@
 
 import os
 import sys
-import re
 from HTMLParser import HTMLParser
 from logging import warning
 
@@ -27,7 +26,7 @@ class Tag(object):
                     pass
                 elif isinstance(_child, (list, tuple)) and \
                         2 <= _child.__len__() <= 3:
-                    _child = Tag(*child)
+                    _child = Tag(*_child)
                 self.append(_child)
 
     def append(self, child):
@@ -199,7 +198,7 @@ class ArcchonfGetsmartstats(object):
                     from json import dumps
             except ImportError:
                 raise self.ArcconfException(
-                    "Can't show like a JSON. Uou can use `--print` argument.")
+                    "Can't show like a JSON. You can use `--print` argument.")
             def out(x):
                 print(dumps(x, indent=2))
         if typ in ('xml', None):
